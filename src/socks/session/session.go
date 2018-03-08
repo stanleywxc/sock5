@@ -1,7 +1,7 @@
 package session
 
 import (
-        "fmt"
+        "log"
         "socks"
         "socks/context"
         "socks/handshake"
@@ -79,7 +79,7 @@ func (session *SessionV5) Start() (error) {
     // Is there any error?
     if ( err != nil) {
         session.reponse(statuscode)
-        fmt.Printf("Handshake failed, error: %s\n", err.Error())
+        log.Printf("Handshake failed, error: %s\n", err.Error())
         return err
     }
     
@@ -95,7 +95,7 @@ func (session *SessionV5) Start() (error) {
         // care of the rest of reply data since we are going
         // to close the connection any way.
         session.reponse(socks.SOCKS_V5_STATUS_SERVER_FAILURE)
-        fmt.Printf("Process Request failed, error: %s\n", err.Error())
+        log.Printf("Process Request failed, error: %s\n", err.Error())
         return err 
     }
     

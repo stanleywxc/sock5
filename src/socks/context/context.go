@@ -1,7 +1,7 @@
 package context
 
 import (
-    "fmt"
+    "log"
     "bufio"
     "errors"
     "net"
@@ -31,7 +31,7 @@ func New(conn net.Conn) (*Context, error) {
         return nil, err
     }
     
-    fmt.Printf("version: %d\n", version)
+    log.Printf("version: %d\n", version)
     
     // Check version is supported?
     if ((version != socks.SOCKS_VERSION_V4) && (version != socks.SOCKS_VERSION_V5)) {
@@ -46,6 +46,10 @@ func New(conn net.Conn) (*Context, error) {
                         connection 	: conn,
                         reader		: reader,
                         writer		: writer }, nil
+}
+
+func (context *Context)Connection() (*net.Conn) {
+    return &context.connection
 }
 
 func (contxt *Context)Version() byte {
