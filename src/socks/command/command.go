@@ -71,7 +71,9 @@ func (command *CommandConnect) Execute () {
     
     // check the atyp
     switch ((*command.address).Atyp()) {
-        case socks.SOCKS_V5_ATYP_IP4 :
+        case socks.SOCKS_V5_ATYP_IP4:
+            ipBytes = net.ParseIP((*command.address).DstAddr())
+            break
         case socks.SOCKS_V5_ATYP_IP6:
             ipBytes = net.ParseIP((*command.address).DstAddr())
             break
@@ -83,6 +85,8 @@ func (command *CommandConnect) Execute () {
     // Check if there is any error
     if (ipBytes == nil) {
         command.response(socks.SOCKS_V5_STATUS_ADDR_UNSUPPORTED, nil)
+        connection.Close()
+        
         log.Printf("Target host IP is incorrect: %s\n", (*command.address).DstAddr())
         return 
     }
@@ -202,16 +206,14 @@ func (command *CommandConnect) upstreamProxy() {
     // Read data from upstream
     for {
         // clear the buffer
-        var buffer []byte = make([]byte, 4096)
+        var buffer []byte = make([]byte, reader.Size())
         
         // read the data from stream
         count, err := reader.Read(buffer)
         
-        log.Printf("------- read data from upstream: %d -------\n", count)
+        log.Printf("------- read data from upstream: %d -------, err: %s\n", count, err)
         socks.FormatLog(buffer[:count])
         log.Printf("-------------------------\n")
-
-        log.Printf("reading from upstream: - count: %d, err: %s\n", count, err)
        
         // any data read?
         if (count != 0) {
@@ -242,20 +244,19 @@ func (command *CommandConnect) downstreamProxy() {
     
     //io.Copy(command.connection, (*command.context.Connection()))
     
+    // Using the io.Copy to accomplish the data transfering is totally fine too.
     var reader *bufio.Reader	= command.context.Reader()
     
     // Read data from upstream
     for {       
-        var buffer []byte = make([]byte, 4096)
+        var buffer []byte = make([]byte, reader.Size())
         
         // read the data from stream
         count, err := reader.Read(buffer)
-
-        log.Printf("------- read data from downstream: %d -------\n", count)
+        
+        log.Printf("------- read data from downstream: %d -------, err: %s\n", count, err)
         socks.FormatLog(buffer[:count])
         log.Printf("-------------------------\n")
-       
-        log.Printf("reading from downstream: - count: %d, err: %s\n", count, err)
         
         // any data read?
         if (count != 0) {
@@ -264,7 +265,7 @@ func (command *CommandConnect) downstreamProxy() {
             log.Printf("sent data to upstream: - count: %d, err: %s\n", count, err)
         }
         
-        // Reach end of stream?
+        // Reach at the end of stream?
         if (err == io.EOF) {
             log.Printf("Sending downstop\n")
             command.downstop <- true

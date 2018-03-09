@@ -1,8 +1,8 @@
 package request
 
 import (
-        "fmt"
         "errors"
+        "net"
         "socks"
         "socks/address"
         "socks/command"
@@ -241,7 +241,7 @@ func (request *RequestV5) getAddress() (address.Address, error) {
                 port |= (int(bite) << 8)
                 bite, err = request.context.Reader().ReadByte()
                 port |= int(bite)                
-                ipaddress = fmt.Sprintf("%d.%d.%d.%d", ipbytes[0], ipbytes[1], ipbytes[2], ipbytes[3])
+                ipaddress = net.IP(ipbytes).String()
             }
             break
         case socks.SOCKS_V5_ATYP_FQDN:
@@ -271,9 +271,7 @@ func (request *RequestV5) getAddress() (address.Address, error) {
                 port |= (int(bite) << 8)
                 bite, err = request.context.Reader().ReadByte()
                 port |= int(bite)                
-                ipaddress = fmt.Sprintf("%X%X:%X%X:%X%X:%X%X:%X%X:%X%X:%X%X:%X%X", 
-                                        ipbytes[0], ipbytes[1], ipbytes[2], ipbytes[3], ipbytes[4], ipbytes[5], ipbytes[6], ipbytes[7],
-                                        ipbytes[8], ipbytes[9], ipbytes[10], ipbytes[11], ipbytes[12], ipbytes[13], ipbytes[14], ipbytes[15])
+                ipaddress = net.IP(ipbytes).String()
             }
             
             break
@@ -284,6 +282,26 @@ func (request *RequestV5) getAddress() (address.Address, error) {
     
     if (err != nil) {
         return nil, err
+    }
+  
+    if (request.atyp != socks.SOCKS_V5_ATYP_FQDN) {
+    
+        // The atyp in reply has to be SOCKS_V5_ATYP_FQDN, otherwise the certificate returned by 
+        // target server will not be able to verified, and thus cause SSL handshake failure.
+        var hosts, err = net.LookupAddr(ipaddress)
+        
+        // any error? If there is any error, don't convert
+        if (err == nil) {
+                 
+            // Check if the returned hosts is empty
+            // if it is empty don't convert to FQDN
+            if (len(hosts) != 0) {
+                
+                //it is not empty, convert the atyp to SOCKS_V5_ATYP_FQDN in reply
+                ipaddress 	= hosts[0]
+                request.atyp	= socks.SOCKS_V5_ATYP_FQDN
+            }
+        }
     }
     
     // create the destination address object

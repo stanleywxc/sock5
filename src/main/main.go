@@ -3,7 +3,6 @@ package main
 import (
     "log"
     "net"
-    "sync"
     "socks/context"    
     "socks/session"
 )
@@ -12,15 +11,30 @@ func main () {
     
     log.Printf("Starting....\n")
   
-    listener, err := net.Listen("tcp4", net.JoinHostPort("0.0.0.0" , "9090"))
+    listener, err := net.Listen("tcp", net.JoinHostPort("" , "9090"))
     
     if (err != nil) {
         log.Printf("Error : %s", err)
     }
    
-    for { 
-        connection, _ := listener.Accept()
+    for {
+        
+        // Accept incoming connections
+        connection, err := listener.Accept()
+        
+        if (err != nil) {
+            
+            log.Printf("Error in accepting incoming connection: %s\n", err.Error())
+            continue
+        }
+        
+        // Is it a valid connection?
+        if (connection == nil) {
+            log.Printf("Error in accepting incoming connection: connection is nil\n")            
+            continue
+        }
  
+        // Handle the incoming connections.
         go handleIncoming(connection)
         
     }
