@@ -287,7 +287,7 @@ func (request *RequestV5) getAddress() (address.Address, error) {
     if (request.atyp != socks.SOCKS_V5_ATYP_FQDN) {
     
         // The atyp in reply has to be SOCKS_V5_ATYP_FQDN, otherwise the certificate returned by 
-        // target server will not be able to verified, and thus cause SSL handshake failure.
+        // target server will not be able to be verified, and thus cause https handshake failure.
         var hosts, err = net.LookupAddr(ipaddress)
         
         // any error? If there is any error, don't convert

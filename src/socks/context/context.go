@@ -1,12 +1,12 @@
 package context
 
 import (
-    "log"
     "bufio"
     "errors"
     "net"
     "socks"
-    
+    "socks/log"
+    "socks/config"
 )
 
 type Context struct {
@@ -14,9 +14,10 @@ type Context struct {
     connection 	net.Conn
     reader		*bufio.Reader
     writer		*bufio.Writer
+    config		*config.Config
 }
 
-func New(conn net.Conn) (*Context, error) {
+func New(conn net.Conn, config *config.Config) (*Context, error) {
     
     var reader *bufio.Reader = bufio.NewReader(conn)
     var writer *bufio.Writer = bufio.NewWriter(conn)
@@ -31,7 +32,7 @@ func New(conn net.Conn) (*Context, error) {
         return nil, err
     }
     
-    log.Printf("version: %d\n", version)
+    log.Infof("version: %d\n", version)
     
     // Check version is supported?
     if ((version != socks.SOCKS_VERSION_V4) && (version != socks.SOCKS_VERSION_V5)) {
@@ -45,7 +46,8 @@ func New(conn net.Conn) (*Context, error) {
     return &Context {   version		: version,
                         connection 	: conn,
                         reader		: reader,
-                        writer		: writer }, nil
+                        writer		: writer,
+                        config		: config }, nil
 }
 
 func (context *Context)Connection() (*net.Conn) {
@@ -66,4 +68,8 @@ func (context *Context) Writer() (*bufio.Writer) {
 
 func (context *Context) LocalAddr() (string) {
     return context.connection.LocalAddr().String()
+}
+
+func (context *Context) Config() (*config.Config) {
+    return context.config
 }

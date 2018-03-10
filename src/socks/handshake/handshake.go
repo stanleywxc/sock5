@@ -1,10 +1,10 @@
 package handshake
 
 import (
-    "log"
     "bufio"
     "errors"
     "socks"
+    "socks/log"
     "socks/authentication"
     "socks/context"
 )
@@ -28,13 +28,13 @@ func (handshake *Handshake)Handshake() (byte, error) {
     
     code, err = handshake.methodNegotiation()
     if (err != nil) {
-        log.Printf(" Method Negotiation failed, error: %s\n", err.Error())
+        log.Errorf(" Method Negotiation failed, error: %s\n", err.Error())
         return code, err
     }
     
     _, err = handshake.authentication()
     if (err != nil) {
-        log.Printf(" Authentication Negotiation failed, error: %s\n", err.Error())
+        log.Errorf(" Authentication Negotiation failed, error: %s\n", err.Error())
         return socks.SOCKS_AUTH_NOACCEPTABLE, err
     }
     
@@ -54,7 +54,7 @@ func (handshake *Handshake)methodNegotiation() (byte, error) {
         return socks.SOCKS_AUTH_NOACCEPTABLE, err
     }
 
-    log.Printf("version : %d\n", handshake.version)
+    log.Infof("version : %d\n", handshake.version)
  
     // how many methods client support?
     handshake.nmethods, err = reader.ReadByte()
@@ -66,7 +66,7 @@ func (handshake *Handshake)methodNegotiation() (byte, error) {
         return socks.SOCKS_AUTH_NOACCEPTABLE, err
     }
     
-    log.Printf("nmethods: %d\n", handshake.nmethods)
+    log.Infof("methods: %d\n", handshake.nmethods)
 
     // Get the methods clients supports    
     handshake.methods = make([]byte, handshake.nmethods)
@@ -75,7 +75,7 @@ func (handshake *Handshake)methodNegotiation() (byte, error) {
     for index = 0; index < handshake.nmethods; index++ {
         handshake.methods[index], err = reader.ReadByte()
 
-        log.Printf("method[%d]: %d\n", index, handshake.methods[index])        
+        log.Infof("method[%d]: %d\n", index, handshake.methods[index])        
         if (err != nil) {
             break
         }
@@ -105,7 +105,7 @@ func (handshake *Handshake)methodNegotiation() (byte, error) {
             break
         }
     }
- 
+    
     err = nil
     if (found == socks.SOCKS_AUTH_NOACCEPTABLE) {
         err = errors.New("No acceptbale method")

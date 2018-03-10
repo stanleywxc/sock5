@@ -2,12 +2,12 @@ package command
 
 import (
         "bufio"
-        "log"
         "io"
         "net"
         "strconv"
         "sync"
         "socks"
+        "socks/log"
         "socks/address"
         "socks/context"
         
@@ -61,11 +61,11 @@ func (command *CommandConnect) Execute () {
         
         // Error happened, send error code back
         command.response(socks.SOCKS_V5_STATUS_HOST_UNREACHABLE, nil)
-        log.Printf("Connect to target: %s:%d failed\n", (*command.address).DstAddr(), (*command.address).DstPort())
+        log.Errorf("Connect to target: %s:%d failed\n", (*command.address).DstAddr(), (*command.address).DstPort())
         return 
     }
 
-    log.Printf("Target host connected: %s via %s\n", connection.RemoteAddr().String(), connection.RemoteAddr().Network())
+    log.Infof("Target host connected: %s via %s\n", connection.RemoteAddr().String(), connection.RemoteAddr().Network())
     
     var ipBytes []byte
     
@@ -87,7 +87,7 @@ func (command *CommandConnect) Execute () {
         command.response(socks.SOCKS_V5_STATUS_ADDR_UNSUPPORTED, nil)
         connection.Close()
         
-        log.Printf("Target host IP is incorrect: %s\n", (*command.address).DstAddr())
+        log.Errorf("Target host IP is incorrect: %s\n", (*command.address).DstAddr())
         return 
     }
         
@@ -116,14 +116,14 @@ func (command *CommandConnect) Execute () {
     //start the downstream proxy
     go command.downstreamProxy()
         
-    log.Printf("Waiting for proxying to finish\n")
+    log.Infof("Waiting for proxying to finish\n")
     
     // wait for proxying being done
     command.waiter.Wait()
  
     connection.Close()
     
-    log.Printf("Proxying finished\n")
+    log.Infof("Proxying finished\n")
 
     // Done
     return 
@@ -131,7 +131,7 @@ func (command *CommandConnect) Execute () {
 
 func (command *CommandConnect) listenUpstream() {
     
-    log.Printf("Entering listenUpstream\n")
+    log.Infof("Entering listenUpstream\n")
 
     //command.waiter.Add(1)
     defer command.waiter.Done()
@@ -145,9 +145,9 @@ func (command *CommandConnect) listenUpstream() {
             case data := <-command.upstream :
                 writer.Write(data)
                 writer.Flush()
-                log.Printf("-------sent data to downstream from: %s -- %d-------\n", command.connection.RemoteAddr().String(), len(data))   
+                log.Infof("-------sent data to downstream from: %s -- %d-------\n", command.connection.RemoteAddr().String(), len(data))   
             case status = <-command.upstop :
-                log.Printf("Received upstop\n")
+                log.Infof("Received upstop\n")
                 break
         }
         if (status == true) {
@@ -155,14 +155,14 @@ func (command *CommandConnect) listenUpstream() {
         }
     }
     
-    log.Printf("Leaving listenUpstream\n")
+    log.Infof("Leaving listenUpstream\n")
     // Done
     return 
 }
 
 func (command *CommandConnect) listenDownstream() {
 
-    log.Printf("Entering listenDownstream\n")
+    log.Infof("Entering listenDownstream\n")
     
     defer command.waiter.Done()
     
@@ -176,9 +176,9 @@ func (command *CommandConnect) listenDownstream() {
             case data := <-command.downstream :
                 writer.Write(data)
                 writer.Flush()
-                log.Printf("-------sent data to upstream to: %s -- %d-------\n", command.connection.RemoteAddr().String(), len(data))  
+                log.Infof("-------sent data to upstream to: %s -- %d-------\n", command.connection.RemoteAddr().String(), len(data))  
             case status = <-command.downstop :
-                log.Printf("received downstop\n")
+                log.Infof("received downstop\n")
                 break
         }
         
@@ -187,7 +187,7 @@ func (command *CommandConnect) listenDownstream() {
         }
     }
 
-    log.Printf("Leaving listenDownstream\n")
+    log.Infof("Leaving listenDownstream\n")
     
     // Done
     return     
@@ -195,7 +195,7 @@ func (command *CommandConnect) listenDownstream() {
 
 func (command *CommandConnect) upstreamProxy() {
 
-    log.Printf("Entering upstreamProxy\n")
+    log.Infof("Entering upstreamProxy\n")
     
     defer command.waiter.Done()
     
@@ -211,26 +211,26 @@ func (command *CommandConnect) upstreamProxy() {
         // read the data from stream
         count, err := reader.Read(buffer)
         
-        log.Printf("------- read data from upstream: %d -------, err: %s\n", count, err)
-        socks.FormatLog(buffer[:count])
-        log.Printf("-------------------------\n")
+        log.Infof("------- read data from upstream: %d -------, err: %s\n", count, err)
+        log.DebugBinary(buffer[:count])
+        log.Infof("-------------------------\n")
        
         // any data read?
         if (count != 0) {
             command.upstream <- buffer[:count]
             
-            log.Printf("sent data to downstream: - count: %d, err: %s\n", count, err)
+            log.Infof("sent data to downstream: - count: %d, err: %s\n", count, err)
         }
         
         // Reach end of stream?
         if (err == io.EOF) {
-            log.Printf("Sending upstop\n")
+            log.Infof("Sending upstop\n")
             command.upstop <- true
             break
         }
     }
     
-    log.Printf("Leaving upstreamProxy\n")
+    log.Infof("Leaving upstreamProxy\n")
 
     // Done
     return
@@ -238,7 +238,7 @@ func (command *CommandConnect) upstreamProxy() {
 
 func (command *CommandConnect) downstreamProxy() {
 
-    log.Printf("Entering downstreamProxy\n")
+    log.Infof("Entering downstreamProxy\n")
 
     defer command.waiter.Done()
     
@@ -254,26 +254,26 @@ func (command *CommandConnect) downstreamProxy() {
         // read the data from stream
         count, err := reader.Read(buffer)
         
-        log.Printf("------- read data from downstream: %d -------, err: %s\n", count, err)
-        socks.FormatLog(buffer[:count])
-        log.Printf("-------------------------\n")
+        log.Infof("------- read data from downstream: %d -------, err: %s\n", count, err)
+        log.DebugBinary(buffer[:count])
+        log.Infof("-------------------------\n")
         
         // any data read?
         if (count != 0) {
             command.downstream <- buffer[:count]
             
-            log.Printf("sent data to upstream: - count: %d, err: %s\n", count, err)
+            log.Infof("sent data to upstream: - count: %d, err: %s\n", count, err)
         }
         
         // Reach at the end of stream?
         if (err == io.EOF) {
-            log.Printf("Sending downstop\n")
+            log.Infof("Sending downstop\n")
             command.downstop <- true
             break
         }
     }
     
-    log.Printf("Leaving downstreamProxy\n")
+    log.Infof("Leaving downstreamProxy\n")
 
     // Done
     return
