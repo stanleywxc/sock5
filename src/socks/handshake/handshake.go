@@ -16,7 +16,11 @@ import (
     "socks/context"
 )
 
-type Handshake struct {
+type Handshake interface {
+    Handshake() (error)
+}
+
+type HandshakeV5 struct {
     version			byte
     nmethods			byte
     methods			[]byte
@@ -24,31 +28,53 @@ type Handshake struct {
     context			*context.Context
 }
 
-func New(context *context.Context) (*Handshake) {
-    return &Handshake {context : context}
+type HandshakeV4 struct {
+    version			byte
+    nmethods			byte
+    methods			[]byte
+    authenticator	authentication.Authenticator
+    context			*context.Context
 }
 
-func (handshake *Handshake)Handshake() (byte, error) {
+func New(context *context.Context) (Handshake) {
     
-    var code 	byte
+    var handshake Handshake
+    switch context.Version() {
+        case socks.SOCKS_VERSION_V4:
+            handshake = &HandshakeV4{context : context}
+            break
+        case socks.SOCKS_VERSION_V5:
+            handshake = &HandshakeV5{context : context}
+            break
+    }
+    
+    return handshake
+}
+
+/*----------------------------------------------------------
+    HandshakeV5 Implementation
+-----------------------------------------------------------*/
+func (handshake *HandshakeV5)Handshake() (error) {
+    
     var err		error
     
-    code, err = handshake.methodNegotiation()
+    err = handshake.methodNegotiation()
     if (err != nil) {
         log.Errorf(" Method Negotiation failed, error: %s\n", err.Error())
-        return code, err
+        return err
     }
-    
+        
     _, err = handshake.authentication()
     if (err != nil) {
+        // Send authentication successful response
         log.Errorf(" Authentication Negotiation failed, error: %s\n", err.Error())
-        return socks.SOCKS_AUTH_NOACCEPTABLE, err
+        return err
     }
-    
-    return code, nil    
+        
+    return nil    
 }
 
-func (handshake *Handshake)methodNegotiation() (byte, error) {    
+func (handshake *HandshakeV5)methodNegotiation() (error) {    
     
     var err		error
     var reader	*bufio.Reader = handshake.context.Reader()
@@ -58,7 +84,9 @@ func (handshake *Handshake)methodNegotiation() (byte, error) {
 
     // Error?    
     if err != nil {
-        return socks.SOCKS_AUTH_NOACCEPTABLE, err
+        // Send method negotiation error response
+        response(socks.SOCKS_AUTH_NOACCEPTABLE, handshake.context)        
+        return err
     }
 
     log.Infof("version : %d\n", handshake.version)
@@ -69,8 +97,11 @@ func (handshake *Handshake)methodNegotiation() (byte, error) {
     // can't read the nmethods
     if err != nil {
         
+        // Send method negotiation error response
+        response(socks.SOCKS_AUTH_NOACCEPTABLE, handshake.context)
+        
         // Send back the error code.
-        return socks.SOCKS_AUTH_NOACCEPTABLE, err
+        return err
     }
     
     log.Infof("methods: %d\n", handshake.nmethods)
@@ -92,8 +123,10 @@ func (handshake *Handshake)methodNegotiation() (byte, error) {
     // If there are some methods, but error occured, continue.
     if (len(handshake.methods) == 0) {
         
+        // Send method negotiation successful response
+        response(socks.SOCKS_AUTH_NOACCEPTABLE, handshake.context)
         // Send back the error code
-        return socks.SOCKS_AUTH_NOACCEPTABLE, errors.New("No acceptable method")
+        return errors.New("No acceptable method")
     }
     
     // Find out if we support the methods.
@@ -117,12 +150,35 @@ func (handshake *Handshake)methodNegotiation() (byte, error) {
     if (found == socks.SOCKS_AUTH_NOACCEPTABLE) {
         err = errors.New("No acceptbale method")
     }
-    // return the 
-    return found, err
-}
 
-func (handshake *Handshake)authentication () (bool, error) {
+    // Send back the error code
+    response(found, handshake.context)
     
-    return handshake.authenticator.Authenticate() 
+    // return the 
+    return err
 }
 
+func (handshake *HandshakeV5)authentication () (bool, error) {
+    return handshake.authenticator.Authenticate(handshake.context) 
+}
+
+/*----------------------------------------------------------
+    HandshakeV4 Implementation
+-----------------------------------------------------------*/
+func (handshake *HandshakeV4)Handshake() (error) {
+    return nil
+}
+
+func (handshake *HandshakeV4)authentication () (bool, error) {
+    return handshake.authenticator.Authenticate(handshake.context) 
+}
+
+/*----------------------------------------------------------
+    Public Methods Implementation
+-----------------------------------------------------------*/
+
+func response(code byte, context *context.Context) {
+    context.Writer().WriteByte(context.Version())
+    context.Writer().WriteByte(code)
+    context.Writer().Flush()
+}

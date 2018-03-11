@@ -81,18 +81,14 @@ func createSessionV5(contxt *context.Context) (*SessionV5) {
 func (session *SessionV5) Start() (error) {
     
     // Do the handshake first
-    statuscode, err := handshake.New(session.context).Handshake()
+    err := handshake.New(session.context).Handshake()
     
     // Is there any error?
     if ( err != nil) {
-        session.reponse(statuscode)
         log.Errorf("Handshake failed, error: %s\n", err.Error())
         return err
     }
-    
-    // Send the found method
-    session.reponse(statuscode)
-    
+        
     // Accept the requests
     request := request.New(session.context)
     status, err := request.Start()
