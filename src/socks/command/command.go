@@ -145,9 +145,9 @@ func (command *CommandConnect) listenUpstream() {
             case data := <-command.upstream :
                 writer.Write(data)
                 writer.Flush()
-                log.Infof("-------sent data to downstream from: %s -- %d-------\n", command.connection.RemoteAddr().String(), len(data))   
+                log.Infof("Sending data to downstream(%s) - bytes: %d\n", (*command.context.Connection()).RemoteAddr().String(), len(data))   
             case status = <-command.upstop :
-                log.Infof("Received upstop\n")
+                log.Infof("Received upstream stop signal\n")
                 break
         }
         if (status == true) {
@@ -176,9 +176,9 @@ func (command *CommandConnect) listenDownstream() {
             case data := <-command.downstream :
                 writer.Write(data)
                 writer.Flush()
-                log.Infof("-------sent data to upstream to: %s -- %d-------\n", command.connection.RemoteAddr().String(), len(data))  
+                log.Infof("Sending data to upstream(%s) - bytes: %d\n", command.connection.RemoteAddr().String(), len(data))  
             case status = <-command.downstop :
-                log.Infof("received downstop\n")
+                log.Infof("Received downstream stop signal\n")
                 break
         }
         
@@ -211,20 +211,19 @@ func (command *CommandConnect) upstreamProxy() {
         // read the data from stream
         count, err := reader.Read(buffer)
         
-        log.Infof("------- read data from upstream: %d -------, err: %s\n", count, err)
+        log.Infof("Reading data from upstream(%s): - bytes: %d, err: %s\n", command.connection.RemoteAddr().String(), count, err)
         log.DebugBinary(buffer[:count])
-        log.Infof("-------------------------\n")
        
         // any data read?
         if (count != 0) {
             command.upstream <- buffer[:count]
             
-            log.Infof("sent data to downstream: - count: %d, err: %s\n", count, err)
+            log.Infof("Sending data to downstream(%s): - bytes: %d, err: %s\n", (*command.context.Connection()).RemoteAddr().String(), count, err)
         }
         
         // Reach end of stream?
         if (err == io.EOF) {
-            log.Infof("Sending upstop\n")
+            log.Infof("Sending upstream stop signal\n")
             command.upstop <- true
             break
         }
@@ -254,20 +253,19 @@ func (command *CommandConnect) downstreamProxy() {
         // read the data from stream
         count, err := reader.Read(buffer)
         
-        log.Infof("------- read data from downstream: %d -------, err: %s\n", count, err)
+        log.Infof("Reading data from downstream(%s): - bytes: %d, err: %s\n", (*command.context.Connection()).RemoteAddr().String(), count, err)
         log.DebugBinary(buffer[:count])
-        log.Infof("-------------------------\n")
         
         // any data read?
         if (count != 0) {
             command.downstream <- buffer[:count]
             
-            log.Infof("sent data to upstream: - count: %d, err: %s\n", count, err)
+            log.Infof("Sending data to upstream(%s): - bytes: %d, err: %s\n", command.connection.RemoteAddr().String(), count, err)
         }
         
         // Reach at the end of stream?
         if (err == io.EOF) {
-            log.Infof("Sending downstop\n")
+            log.Infof("Sending downstream stop signal\n")
             command.downstop <- true
             break
         }

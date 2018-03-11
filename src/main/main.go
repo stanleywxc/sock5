@@ -1,16 +1,20 @@
 package main
 
 import (
+        "fmt"
         "socks/log"
         "socks/config"
 )
 
 func main () {
-    
-    log.Infof("Starting....\n")
-    
+        
     // parse args, only support '-f' now
-    args := parseArgs()
+    args, msg := parseArgs()
+    
+    if (len(msg) != 0) {
+        fmt.Printf("%s\n", msg)
+        return 
+    }
     
     // initialization
     config := config.Initialize(args.Get("-f"))
@@ -22,6 +26,8 @@ func main () {
     // create a server instance
     server := New(config)
     
+    log.Infof("Socks5 server is starting....\n")
+
     // Start the server   
     if (server.Start() != true) {
         log.Errorf("Statring socks failed\n")
