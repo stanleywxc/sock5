@@ -10,7 +10,9 @@ package authentication
 import (
         "errors"
         "socks"
+        "socks/context"
 )
+
 /* RFC 1928
    The client connects to the server, and sends a version
    identifier/method selection message:
@@ -38,8 +40,13 @@ import (
    client are acceptable, and the client MUST close the connection.
 */
 
+type Identity struct {
+    Username		string
+    Password		string
+}
+
 type Authenticator interface {
-    Authenticate () (bool, error)
+    Authenticate (identity *Identity, context *context.Context) (bool, error)
 }
 
 type NoAuthentication struct {
@@ -76,7 +83,7 @@ func NewNoAuthentication() (*NoAuthentication){
     return &NoAuthentication{}
 }
 
-func (auth *NoAuthentication) Authenticate() (bool, error) {
+func (auth *NoAuthentication) Authenticate(identity *Identity, context *context.Context) (bool, error) {
     return true, nil
 }
 
@@ -87,25 +94,27 @@ func NewUserPasswordAuthentication() (*UserPasswordAuthentication){
     return &UserPasswordAuthentication{}
 }
 
-func (auth *UserPasswordAuthentication) Authenticate() (bool, error) {
+func (auth *UserPasswordAuthentication) Authenticate(identity *Identity, context *context.Context) (bool, error) {
+
+    // check of the server config correctly    
+    if ((len(context.Config().Auth.Username) == 0) || (len(context.Config().Auth.Password) == 0)) {
+        return false, errors.New("Socks server doesn't config authentication correctly")
+    }
     
-    if (len(auth.username) == 0) {
+    // check if the username and password provided
+    if ((len(identity.Username) == 0) || (len(identity.Password) == 0)) {
         return false, errors.New("Authentication failed")
     }
     
-    if (len(auth.username) == 0) {
+    if (identity.Username != context.Config().Auth.Username) {
+        return false, errors.New("Authentication failed")
+    }
+    
+    if (identity.Password != context.Config().Auth.Password) {
         return false, errors.New("Authentication failed")
     }
     
     return true, nil
-}
-
-func (auth *UserPasswordAuthentication) SetUsername(username string) {
-    auth.username = username
-}
-
-func (auth *UserPasswordAuthentication) SetPassword(password string) {
-    auth.password = password
 }
 
 /*----------------------------------------------------------
@@ -115,6 +124,6 @@ func NewGssAPIAuthentication() (*GssAPIAuthentication){
     return &GssAPIAuthentication{}
 }
 
-func (auth *GssAPIAuthentication) Authenticate() (bool, error) {
+func (auth *GssAPIAuthentication) Authenticate(identity *Identity, context *context.Context) (bool, error) {
     return true, nil
 }
