@@ -96,29 +96,29 @@ func NewUserPasswordAuthentication() (*UserPasswordAuthentication){
 
 func (auth *UserPasswordAuthentication) Authenticate(context *context.Context) (bool, error) {
 
+    var statuscode byte = socks.SOCKS_AUTH_NOACCEPTABLE
+    
+    defer response(statuscode, context)
+    
     // check of the server config correctly    
     if ((len(context.Config().Auth.Username) == 0) || (len(context.Config().Auth.Password) == 0)) {
-        response(socks.SOCKS_AUTH_NOACCEPTABLE, context)
         return false, errors.New("Socks server doesn't config authentication correctly")
     }
     
     // Read the version
     _, err := context.Reader().ReadByte()
     if (err != nil) {
-        response(socks.SOCKS_AUTH_NOACCEPTABLE, context)
         return false, err
     }
     
     length, err := context.Reader().ReadByte()
     if (err != nil) {
-        response(socks.SOCKS_AUTH_NOACCEPTABLE, context)
         return false, err
     }
     
     bytes := make([]byte, length)
     count, err := context.Reader().Read(bytes)
     if (err != nil) {
-        response(socks.SOCKS_AUTH_NOACCEPTABLE, context)
         return false, err
     }
     
@@ -127,29 +127,24 @@ func (auth *UserPasswordAuthentication) Authenticate(context *context.Context) (
     // Read password
     length, err = context.Reader().ReadByte()
     if (err != nil) {
-        response(socks.SOCKS_AUTH_NOACCEPTABLE, context)
         return false, err
     }
     count, err = context.Reader().Read(bytes)
     if (err != nil){
-        response(socks.SOCKS_AUTH_NOACCEPTABLE, context)
         return false, err        
     }
     password := string(bytes[:count])
     
     // check if the username and password provided
     if ((len(username) == 0) || (len(password) == 0)) {
-        response(socks.SOCKS_AUTH_NOACCEPTABLE, context)        
         return false, errors.New("Authentication failed")
     }
     
     if ((username != context.Config().Auth.Username) || (password != context.Config().Auth.Password)) {
-        response(socks.SOCKS_AUTH_NOACCEPTABLE, context) 
         return false, errors.New("Authentication failed")
     }
-        
-    // Authentication successful
-    response(socks.SOCKS_V5_STATUS_SUCCESS, context)
+
+    statuscode = socks.SOCKS_V5_STATUS_SUCCESS
 
     return true, nil
 }
