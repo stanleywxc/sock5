@@ -211,14 +211,14 @@ func (command *CommandConnect) upstreamProxy() {
         // read the data from stream
         count, err := reader.Read(buffer)
         
-        log.Infof("Reading data from upstream(%s): - bytes: %d, err: %s\n", command.connection.RemoteAddr().String(), count, err)
+        log.Infof("Reading data from upstream(%s): - bytes: %d, err: %#v\n", command.connection.RemoteAddr().String(), count, err)
         log.DebugBinary(buffer[:count])
        
         // any data read?
         if (count != 0) {
             command.upstream <- buffer[:count]
             
-            log.Infof("Sending data to downstream(%s): - bytes: %d, err: %s\n", (*command.context.Connection()).RemoteAddr().String(), count, err)
+            log.Infof("Sending data to downstream(%s): - bytes: %d, err: %#v\n", (*command.context.Connection()).RemoteAddr().String(), count, err)
         }
         
         // Reach end of stream?
@@ -253,14 +253,14 @@ func (command *CommandConnect) downstreamProxy() {
         // read the data from stream
         count, err := reader.Read(buffer)
         
-        log.Infof("Reading data from downstream(%s): - bytes: %d, err: %s\n", (*command.context.Connection()).RemoteAddr().String(), count, err)
+        log.Infof("Reading data from downstream(%s): - bytes: %d, err: %#v\n", (*command.context.Connection()).RemoteAddr().String(), count, err)
         log.DebugBinary(buffer[:count])
         
         // any data read?
         if (count != 0) {
             command.downstream <- buffer[:count]
             
-            log.Infof("Sending data to upstream(%s): - bytes: %d, err: %s\n", command.connection.RemoteAddr().String(), count, err)
+            log.Infof("Sending data to upstream(%s): - bytes: %d, err: %#v\n", command.connection.RemoteAddr().String(), count, err)
         }
         
         // Reach at the end of stream?
