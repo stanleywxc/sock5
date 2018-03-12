@@ -304,9 +304,27 @@ func (request *RequestV5) getAddress() (address.Address, error) {
             // if it is empty don't convert to FQDN
             if (len(hosts) != 0) {
                 
+                var bfound bool = false
                 //it is not empty, convert the atyp to SOCKS_V5_ATYP_FQDN in reply
-                ipaddress 	= hosts[0]
-                request.atyp	= socks.SOCKS_V5_ATYP_FQDN
+                for _, v := range hosts {
+                    // Do the reverse dns query of this host
+                    ips, err := net.LookupIP(v)
+                    if (err != nil) {
+                        continue
+                    }
+                    for _, u := range ips {
+                        if (ipaddress == u.String()) {
+                            // found it.
+                           bfound = true
+                           break
+                        }
+                    }
+                    if (bfound == true) {
+                        ipaddress = v
+                        request.atyp	= socks.SOCKS_V5_ATYP_FQDN
+                        break
+                    }
+                }
             }
         }
     }
