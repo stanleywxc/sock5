@@ -316,6 +316,7 @@ func NewCommandBind (address *address.Address, context *context.Context) (*Comma
 
 func (command *CommandBind) Execute () {
     
+    log.Errorf("Bind Command is not supported now\n")
     return 
 }
 
@@ -327,6 +328,8 @@ func NewCommandUDPAssociation (address *address.Address, context *context.Contex
 }
 
 func (command *CommandUDPAssociation) Execute () {
+    
+    log.Errorf("UDP Assoication Command is not supported now\n")
     
     return 
 }

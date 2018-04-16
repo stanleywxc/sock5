@@ -70,7 +70,9 @@ func daemonize(args *Args) {
     }()
     
     // start the server
-    start(args)    
+    if (start(args) != true) {
+        os.Exit(1)
+    }   
 }
 
 func startDaemon(args *Args) {
@@ -186,7 +188,7 @@ func savePid(pid int) {
 
 
 // start the socks server
-func start (args *Args) {
+func start (args *Args) (bool) {
         
     // initialization
     config := config.Initialize(args.Get("-f"))
@@ -203,6 +205,9 @@ func start (args *Args) {
     // Start the server   
     if (server.Start() != true) {
         log.Errorf("Statring socks failed\n")
+        return false
     }
+    
+    return true
 }
 
